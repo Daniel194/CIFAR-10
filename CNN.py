@@ -120,10 +120,15 @@ if __name__ == "__main__":
 
     model.training(features, labels)
 
-    predicted_labels = model.predicting(test_features)
+    util.create_file('data/submission1.csv')
 
-    # Save the predictions to label
-    util.save_predicted_labels('data/submission1.csv', predicted_labels)
+    for i in range(0, test_features.shape[0], 50):
+        batch_test_feature = test_features[i:i + 50, :]
+
+        predicted_labels = model.predicting(batch_test_feature)
+
+        # Save the predictions to label
+        util.append_data_to_file('data/submission1.csv', predicted_labels, i)
 
     # Close the session
     model.sess.close()
