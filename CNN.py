@@ -6,61 +6,63 @@ import Utility as util
 class DigitsRecognition(object):
     def training(self, features, labels):
         # Split data into training and validation sets.
-        train_features = features[500:]
-        train_labels = labels[500:]
-        validation_features = features[0:500]
-        validation_labels = labels[0:500]
+        train_features = features[50:]
+        train_labels = labels[50:]
+        validation_features = features[0:50]
+        validation_labels = labels[0:50]
 
         # Launch the session
         self.sess = tf.InteractiveSession()
 
         # Placeholders
-        self.x = tf.placeholder(tf.float32, shape=[None, 784])  # the data
-        self.y_ = tf.placeholder(tf.float32, shape=[None, 10])  # the true labels
+        self.x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data [60000 x 3072]
+        self.y_ = tf.placeholder(tf.float32, shape=[None, 10])  # the true labels [10 x 3072]
 
         # Prepare the data
-        self.x_image = tf.reshape(self.x, [-1, 28, 28, 1])
+        self.x_image = tf.reshape(self.x, [-1, 32, 32, 3])  # [60000 x 32 x 32 x 3]
 
         # First Layer
-        self.W_conv1 = self.__weight_variable([3, 3, 1, 32])
-        self.b_conv1 = self.__bias_variable([32])
+        self.W_conv1 = self.__weight_variable([3, 3, 3, 32])  # [ 3 x 3 x 3 x 32 ]
+        self.b_conv1 = self.__bias_variable([32])  # [32]
 
-        self.h_conv1 = tf.nn.relu(self.__conv(self.x_image, self.W_conv1) + self.b_conv1)
+        self.h_conv1 = tf.nn.relu(self.__conv(self.x_image, self.W_conv1) + self.b_conv1)  # [60000 x 32 x 32 x 32]
 
-        self.W_conv1_2 = self.__weight_variable([3, 3, 32, 32])
-        self.b_conv1_2 = self.__bias_variable([32])
+        self.W_conv1_2 = self.__weight_variable([3, 3, 32, 32])  # [ 3 x 3 x 32 x 32 ]
+        self.b_conv1_2 = self.__bias_variable([32])  # [32]
 
-        self.h_conv1_2 = tf.nn.relu(self.__conv(self.h_conv1, self.W_conv1_2) + self.b_conv1_2)
-        self.h_pool1 = self.__max_pool(self.h_conv1_2)
+        self.h_conv1_2 = tf.nn.relu(
+            self.__conv(self.h_conv1, self.W_conv1_2) + self.b_conv1_2)  # [60000 x 32 x 32 x 32]
+        self.h_pool1 = self.__max_pool(self.h_conv1_2)  # [60000 x 16 x 16 x 32]
 
         # Second Layer
-        self.W_conv2 = self.__weight_variable([3, 3, 32, 64])
-        self.b_conv2 = self.__bias_variable([64])
+        self.W_conv2 = self.__weight_variable([3, 3, 32, 64])  # [ 3 x 3 x 32 x 64 ]
+        self.b_conv2 = self.__bias_variable([64])  # [64]
 
-        self.h_conv2 = tf.nn.relu(self.__conv(self.h_pool1, self.W_conv2) + self.b_conv2)
+        self.h_conv2 = tf.nn.relu(self.__conv(self.h_pool1, self.W_conv2) + self.b_conv2)  # [60000 x 16 x 16 x 64]
 
-        self.W_conv2_2 = self.__weight_variable([3, 3, 64, 64])
-        self.b_conv2_2 = self.__bias_variable([64])
+        self.W_conv2_2 = self.__weight_variable([3, 3, 64, 64])  # [ 3 x 3 x 64 x 64 ]
+        self.b_conv2_2 = self.__bias_variable([64])  # [64]
 
-        self.h_conv2_2 = tf.nn.relu(self.__conv(self.h_conv2, self.W_conv2_2) + self.b_conv2_2)
-        self.h_pool2 = self.__max_pool(self.h_conv2_2)
+        self.h_conv2_2 = tf.nn.relu(
+            self.__conv(self.h_conv2, self.W_conv2_2) + self.b_conv2_2)  # [60000 x 16 x 16 x 64]
+        self.h_pool2 = self.__max_pool(self.h_conv2_2)  # [60000 x 8 x 8 x 64]
 
         # First Full Connected Layer
-        self.W_fc1 = self.__weight_variable([7 * 7 * 64, 1024])
-        self.b_fc1 = self.__bias_variable([1024])
+        self.W_fc1 = self.__weight_variable([8 * 8 * 64, 1024])  # [4096 x 1024]
+        self.b_fc1 = self.__bias_variable([1024])  # [1024]
 
-        self.h_pool2_flat = tf.reshape(self.h_pool2, [-1, 7 * 7 * 64])
-        self.h_fc1 = tf.nn.relu(tf.matmul(self.h_pool2_flat, self.W_fc1) + self.b_fc1)
+        self.h_pool2_flat = tf.reshape(self.h_pool2, [-1, 7 * 7 * 64])  # [ 60000 x 4096 ]
+        self.h_fc1 = tf.nn.relu(tf.matmul(self.h_pool2_flat, self.W_fc1) + self.b_fc1)  # [ 60000 x 1024 ]
 
         # Dropout
         self.keep_prob = tf.placeholder(tf.float32)
-        self.h_fc1_drop = tf.nn.dropout(self.h_fc1, self.keep_prob)
+        self.h_fc1_drop = tf.nn.dropout(self.h_fc1, self.keep_prob)  # [ 60000 x 1024 ]
 
         # Second Full Connected Layer
-        self.W_fc2 = self.__weight_variable([1024, 10])
-        self.b_fc2 = self.__bias_variable([10])
+        self.W_fc2 = self.__weight_variable([1024, 10])  # [1024 x 10]
+        self.b_fc2 = self.__bias_variable([10])  # [10]
 
-        self.y_conv = tf.nn.softmax(tf.matmul(self.h_fc1_drop, self.W_fc2) + self.b_fc2)
+        self.y_conv = tf.nn.softmax(tf.matmul(self.h_fc1_drop, self.W_fc2) + self.b_fc2)  # [ 6000 x 10]
 
         # Loss Function loss fn == avg(y'*log(y))
         loss_fn = tf.reduce_mean(-tf.reduce_sum(self.y_ * tf.log(self.y_conv), reduction_indices=[1]))
