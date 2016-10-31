@@ -15,54 +15,54 @@ class DigitsRecognition(object):
         self.sess = tf.InteractiveSession()
 
         # Placeholders
-        self.x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data [60000 x 3072]
-        self.y_ = tf.placeholder(tf.float32, shape=[None, 10])  # the true labels [10 x 3072]
+        self.x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data [50000 x 3072]
+        self.y_ = tf.placeholder(tf.float32, shape=[None, 10])  # the true labels [50000]
 
         # Prepare the data
-        self.x_image = tf.reshape(self.x, [-1, 32, 32, 3])  # [60000 x 32 x 32 x 3]
+        self.x_image = tf.reshape(self.x, [-1, 32, 32, 3])  # [50000 x 32 x 32 x 3]
 
         # First Layer
         self.W_conv1 = self.__weight_variable([3, 3, 3, 32])  # [ 3 x 3 x 3 x 32 ]
         self.b_conv1 = self.__bias_variable([32])  # [32]
 
-        self.h_conv1 = tf.nn.relu(self.__conv(self.x_image, self.W_conv1) + self.b_conv1)  # [60000 x 32 x 32 x 32]
+        self.h_conv1 = tf.nn.relu(self.__conv(self.x_image, self.W_conv1) + self.b_conv1)  # [50000 x 32 x 32 x 32]
 
         self.W_conv1_2 = self.__weight_variable([3, 3, 32, 32])  # [ 3 x 3 x 32 x 32 ]
         self.b_conv1_2 = self.__bias_variable([32])  # [32]
 
         self.h_conv1_2 = tf.nn.relu(
-            self.__conv(self.h_conv1, self.W_conv1_2) + self.b_conv1_2)  # [60000 x 32 x 32 x 32]
-        self.h_pool1 = self.__max_pool(self.h_conv1_2)  # [60000 x 16 x 16 x 32]
+            self.__conv(self.h_conv1, self.W_conv1_2) + self.b_conv1_2)  # [50000 x 32 x 32 x 32]
+        self.h_pool1 = self.__max_pool(self.h_conv1_2)  # [50000 x 16 x 16 x 32]
 
         # Second Layer
         self.W_conv2 = self.__weight_variable([3, 3, 32, 64])  # [ 3 x 3 x 32 x 64 ]
         self.b_conv2 = self.__bias_variable([64])  # [64]
 
-        self.h_conv2 = tf.nn.relu(self.__conv(self.h_pool1, self.W_conv2) + self.b_conv2)  # [60000 x 16 x 16 x 64]
+        self.h_conv2 = tf.nn.relu(self.__conv(self.h_pool1, self.W_conv2) + self.b_conv2)  # [50000 x 16 x 16 x 64]
 
         self.W_conv2_2 = self.__weight_variable([3, 3, 64, 64])  # [ 3 x 3 x 64 x 64 ]
         self.b_conv2_2 = self.__bias_variable([64])  # [64]
 
         self.h_conv2_2 = tf.nn.relu(
-            self.__conv(self.h_conv2, self.W_conv2_2) + self.b_conv2_2)  # [60000 x 16 x 16 x 64]
-        self.h_pool2 = self.__max_pool(self.h_conv2_2)  # [60000 x 8 x 8 x 64]
+            self.__conv(self.h_conv2, self.W_conv2_2) + self.b_conv2_2)  # [50000 x 16 x 16 x 64]
+        self.h_pool2 = self.__max_pool(self.h_conv2_2)  # [50000 x 8 x 8 x 64]
 
         # First Full Connected Layer
         self.W_fc1 = self.__weight_variable([8 * 8 * 64, 1024])  # [4096 x 1024]
         self.b_fc1 = self.__bias_variable([1024])  # [1024]
 
-        self.h_pool2_flat = tf.reshape(self.h_pool2, [-1, 7 * 7 * 64])  # [ 60000 x 4096 ]
-        self.h_fc1 = tf.nn.relu(tf.matmul(self.h_pool2_flat, self.W_fc1) + self.b_fc1)  # [ 60000 x 1024 ]
+        self.h_pool2_flat = tf.reshape(self.h_pool2, [-1, 8 * 8 * 64])  # [ 50000 x 4096 ]
+        self.h_fc1 = tf.nn.relu(tf.matmul(self.h_pool2_flat, self.W_fc1) + self.b_fc1)  # [ 50000 x 1024 ]
 
         # Dropout
         self.keep_prob = tf.placeholder(tf.float32)
-        self.h_fc1_drop = tf.nn.dropout(self.h_fc1, self.keep_prob)  # [ 60000 x 1024 ]
+        self.h_fc1_drop = tf.nn.dropout(self.h_fc1, self.keep_prob)  # [ 50000 x 1024 ]
 
         # Second Full Connected Layer
         self.W_fc2 = self.__weight_variable([1024, 10])  # [1024 x 10]
         self.b_fc2 = self.__bias_variable([10])  # [10]
 
-        self.y_conv = tf.nn.softmax(tf.matmul(self.h_fc1_drop, self.W_fc2) + self.b_fc2)  # [ 6000 x 10]
+        self.y_conv = tf.nn.softmax(tf.matmul(self.h_fc1_drop, self.W_fc2) + self.b_fc2)  # [ 50000 x 10]
 
         # Loss Function loss fn == avg(y'*log(y))
         loss_fn = tf.reduce_mean(-tf.reduce_sum(self.y_ * tf.log(self.y_conv), reduction_indices=[1]))
@@ -78,11 +78,11 @@ class DigitsRecognition(object):
         # Initialize all variables
         self.sess.run(tf.initialize_all_variables())
 
-        for i in range(20000):
+        for i in range(100):
             batch = util.generate_batch(train_features, train_labels, 50)
-            train_step.run(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 0.5})
+            train_step.run(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 0.75})
 
-            if i % 100 == 0:
+            if i % 10 == 0:
                 train_accuracy = accuracy.eval(
                     feed_dict={self.x: validation_features, self.y_: validation_labels, self.keep_prob: 1.0})
 
@@ -113,24 +113,36 @@ class DigitsRecognition(object):
 
 
 if __name__ == "__main__":
-    # Read the feature and the labels.
-    features = util.read_features_from_csv('data/train.7z')
-    labels = util.read_labels_from_csv('data/trainLabels.csv')
-    test_features = util.read_features_from_csv('data/test.7z', usecols=None)
+    # load the CIFAR10 data
+    # X = [ 50000 x 3072 ], y = [ 50000 ], X_test = [ 10000 x 3072 ] y_test = [10000]
+    X, y, X_test, y_test = util.load_CIFAR10('data/')
+
+    # Reshape the label y_zero = [50000 x 10]
+    y_zero = np.zeros((50000, 10))
+
+    y_zero[:, y] = 1
 
     model = DigitsRecognition()
 
-    model.training(features, labels)
+    model.training(X, y_zero)
 
-    util.create_file('data/submission1.csv')
+    # util.create_file('result/submission2.csv')
+    #
+    # for i in range(0, X_test.shape[0], 50):
+    #     batch_test_feature = X_test[i:i + 50, :]
+    #
+    #     predicted_labels = model.predicting(batch_test_feature)
+    #
+    #     # Save the predictions to label
+    #     util.append_data_to_file('result/submission2.csv', predicted_labels, i)
 
-    for i in range(0, test_features.shape[0], 50):
-        batch_test_feature = test_features[i:i + 50, :]
 
-        predicted_labels = model.predicting(batch_test_feature)
+    # Preditct the data
+    predicted_labels = model.predicting(X_test)
 
-        # Save the predictions to label
-        util.append_data_to_file('data/submission1.csv', predicted_labels, i)
+    acc = np.mean(predicted_labels == y_test)
+
+    print("Acc : ", acc)
 
     # Close the session
     model.sess.close()
