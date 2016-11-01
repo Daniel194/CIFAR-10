@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import Utility as util
+import math
 
 
 class SoftMax(object):
@@ -8,7 +9,7 @@ class SoftMax(object):
 
         self.NR_ITERATION = 1000  # the number of iteration in the SoftMax
         self.SHOW_ACC = 100  # Show Accuracy
-        self.BATCH_SIZE = 100  # the size of the batch
+        self.BATCH_SIZE = 5000  # the size of the batch
         self.TRAIN_STEP = 0.5  # Train Step
 
     def training(self, features, labels):
@@ -18,6 +19,9 @@ class SoftMax(object):
         :param labels: labels for X  [50000 x 1]
         :return: return a dictionary which contains all learned parameter
         """
+
+        # Preprocessing
+        features = self.__preprocessing(features)
 
         # Split data into training and validation sets.
         train_features = features[50:]
@@ -33,17 +37,18 @@ class SoftMax(object):
         y_ = tf.placeholder(tf.int64, shape=[None])  # the true labels
 
         # Initialize the variables
-        W = tf.Variable(tf.zeros([3072, 10]))
-        b = tf.Variable(tf.zeros([10]))
+        W = tf.Variable(np.random.randn(3072, 10) * math.sqrt(2.0 / 30720), dtype=tf.float32)
+        b = tf.Variable(tf.zeros([10]), dtype=tf.float32)
 
         # Calculate the output ( Soft Max )
         y = tf.nn.softmax(tf.matmul(x, W) + b)
 
         # Apply cross entropy loss ( loss data )
-        cross_entropy = tf.reduce_mean(-tf.reduce_sum(tf.log(y), reduction_indices=[1]))
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(y, y_)
+        cross_entropy_mean = tf.reduce_mean(cross_entropy)
 
         # Train step
-        train_step = tf.train.GradientDescentOptimizer(self.TRAIN_STEP).minimize(cross_entropy)
+        train_step = tf.train.GradientDescentOptimizer(self.TRAIN_STEP).minimize(cross_entropy_mean)
 
         # Evaluate the model
         correct_prediction = tf.equal(tf.argmax(y, 1), y_)
@@ -69,6 +74,9 @@ class SoftMax(object):
         return {'W': W_final, 'b': b_final}
 
     def predict(self, test_features, test_labels, nn):
+
+        # Preprocessing
+        test_features = self.__preprocessing(test_features)
 
         # Placeholders
         x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data
@@ -96,6 +104,20 @@ class SoftMax(object):
         print("The final accuracy is : ", acc)
 
         return predicted_labels
+
+    def __preprocessing(self, X):
+        """
+        Preprocessing the X data by zero-centered and normalized them.
+        :param X: the data.
+        :return: return the new zero-centered and normalized data.
+        """
+
+        X = X.astype(np.float64)
+        X = X.T - np.array(np.mean(X, axis=1, dtype=np.float64))  # zero-centered
+        X = X / np.std(X.T, axis=1, dtype=np.float64)  # normalization
+        X = X.T
+
+        return X
 
 
 if __name__ == "__main__":
