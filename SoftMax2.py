@@ -5,12 +5,19 @@ import math
 
 
 class SoftMax(object):
-    def __init__(self):
+    def __init__(self, d, k):
+        """
+        :param d: dimensionality
+        :param k: number of classes
+        """
 
+        self.D = d
+        self.K = k
+        self.NR_VALIDATION_DATA = 50  # the number of validation data
         self.NR_ITERATION = 1000  # the number of iteration in the SoftMax
         self.SHOW_ACC = 100  # Show Accuracy
         self.BATCH_SIZE = 5000  # the size of the batch
-        self.TRAIN_STEP = 0.5  # Train Step
+        self.TRAIN_STEP = 1e-2  # Train Step
 
     def training(self, features, labels):
         """
@@ -24,21 +31,21 @@ class SoftMax(object):
         features = self.__preprocessing(features)
 
         # Split data into training and validation sets.
-        train_features = features[50:]
-        train_labels = labels[50:]
-        validation_features = features[0:50]
-        validation_labels = labels[0:50]
+        train_features = features[self.NR_VALIDATION_DATA:]
+        train_labels = labels[self.NR_VALIDATION_DATA:]
+        validation_features = features[0:self.NR_VALIDATION_DATA]
+        validation_labels = labels[0:self.NR_VALIDATION_DATA]
 
         # Launch the session
         sess = tf.InteractiveSession()
 
         # Placeholders
-        x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data
+        x = tf.placeholder(tf.float32, shape=[None, self.D])  # the data
         y_ = tf.placeholder(tf.int64, shape=[None])  # the true labels
 
         # Initialize the variables
-        W = tf.Variable(np.random.randn(3072, 10) * math.sqrt(2.0 / 30720), dtype=tf.float32)
-        b = tf.Variable(tf.zeros([10]), dtype=tf.float32)
+        W = tf.Variable(np.random.randn(self.D, self.K) * math.sqrt(2.0 / self.D * self.K), dtype=tf.float32)
+        b = tf.Variable(tf.zeros([self.K]), dtype=tf.float32)
 
         # Calculate the output ( Soft Max )
         y = tf.nn.softmax(tf.matmul(x, W) + b)
@@ -47,8 +54,8 @@ class SoftMax(object):
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(y, y_)
         cross_entropy_mean = tf.reduce_mean(cross_entropy)
 
-        # Train step
-        train_step = tf.train.GradientDescentOptimizer(self.TRAIN_STEP).minimize(cross_entropy_mean)
+        # Training step - ADAM solver
+        train_step = tf.train.AdamOptimizer(self.TRAIN_STEP).minimize(cross_entropy_mean)
 
         # Evaluate the model
         correct_prediction = tf.equal(tf.argmax(y, 1), y_)
@@ -74,14 +81,21 @@ class SoftMax(object):
         return {'W': W_final, 'b': b_final}
 
     def predict(self, test_features, test_labels, nn):
+        """
+        Predict data
+        :param test_features: testing data
+        :param test_labels: labels for X
+        :param nn: it is a dictionary which contains a Neural Network
+        :return: return the predicted labels
+        """
 
         # Preprocessing
         test_features = self.__preprocessing(test_features)
 
         # Placeholders
-        x = tf.placeholder(tf.float32, shape=[None, 3072])  # the data
-        W = tf.placeholder(tf.float32, shape=[3072, 10])  # the weights
-        b = tf.placeholder(tf.float32, shape=[10])  # the biases
+        x = tf.placeholder(tf.float32, shape=[None, self.D])  # the data
+        W = tf.placeholder(tf.float32, shape=[self.D, self.K])  # the weights
+        b = tf.placeholder(tf.float32, shape=[self.K])  # the biases
 
         # Calculate the output ( Soft Max )
         y = tf.nn.softmax(tf.matmul(x, W) + b)
@@ -121,13 +135,17 @@ class SoftMax(object):
 
 
 if __name__ == "__main__":
-    # path to the saved learned parameter
+    # Path to the saved learned parameter
     learn_data = 'result/SoftMax2/cifar_10'
 
-    # load the CIFAR10 data
-    X, y, X_test, y_test = util.load_CIFAR10('data/')
+    D = 3072  # dimensionality
+    K = 10  # number of classes
 
-    softMax = SoftMax()
+    # Neural Network
+    softMax = SoftMax(D, K)
+
+    # Load the CIFAR10 data
+    X, y, X_test, y_test = util.load_CIFAR10('data/')
 
     # Train the Neural Network
     if util.file_exist(learn_data):
