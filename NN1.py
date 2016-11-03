@@ -129,7 +129,7 @@ class NeuralNetwork(object):
         :param X: testing data
         :param y: labels for X
         :param nn: it is a dictionary which contains a Neural Network
-        :return: return the accuracy of the Neural Network
+        :return: return the predicted labels
         """
 
         # Preprocessing the data
@@ -152,9 +152,14 @@ class NeuralNetwork(object):
         # output neuron
         out = np.dot(hidden_layer2, W3) + b3  # [50000 x 10]
 
-        predicted_class = np.argmax(out, axis=1)  # [50000 x 1]
+        predicted_labels = np.argmax(out, axis=1)  # [50000 x 1]
 
-        return np.mean(predicted_class == y)
+        # Calculate the accuracy
+        acc = np.mean(predicted_labels == y)
+
+        print("The final accuracy is : ", acc)
+
+        return predicted_labels
 
     def __forward(self, X, W, b):
         """
@@ -243,9 +248,8 @@ class NeuralNetwork(object):
 
 
 if __name__ == '__main__':
-
     # path to the saved learned parameter
-    learn_data = 'learned/cifar_10'
+    learn_data = 'result/NN1/cifar_10'
 
     D = 3072  # dimensionality
     K = 10  # number of classes
@@ -254,7 +258,7 @@ if __name__ == '__main__':
     nn = NeuralNetwork(D, K)
 
     # load the CIFAR10 data
-    X, y, X_test, y_test = util.load_CIFAR10('../Utility/cifar-10/')
+    X, y, X_test, y_test = util.load_CIFAR10('data/')
 
     # Train the Neural Network
     if util.file_exist(learn_data):
@@ -265,6 +269,7 @@ if __name__ == '__main__':
         util.pickle_nn(learn_data, nn_parameter)
 
     # Test the Neural Network
-    accuracy = nn.predict(X_test, y_test, nn_parameter)
+    predicted_labels = nn.predict(X_test, y_test, nn_parameter)
 
-    print('Training Accuracy: ', accuracy)
+    # Save the predictions to label
+    util.save_predicted_labels('result/NN1/submission.csv', predicted_labels)
