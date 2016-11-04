@@ -19,7 +19,7 @@ class NeuralNetwork(object):
         self.NR_ITERATION = 100  # the number of iteration in the SoftMax
         self.SHOW_ACC = 10  # Show Accuracy
         self.BATCH_SIZE = 5000  # the size of the batch
-        self.TRAIN_STEP = 1e-1  # Train Step
+        self.TRAIN_STEP = 1e-3  # Train Step
 
     def training(self, features, labels):
         """
