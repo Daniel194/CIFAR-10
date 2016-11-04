@@ -16,10 +16,9 @@ class NeuralNetwork(object):
         self.H1 = 100  # size of first hidden layer
         self.H2 = 100  # size of second hidden layer
         self.NR_VALIDATION_DATA = 50  # the number of validation data
-        self.NR_ITERATION = 100  # the number of iteration in the SoftMax
-        self.SHOW_ACC = 10  # Show Accuracy
-        self.BATCH_SIZE = 5000  # the size of the batch
-        self.TRAIN_STEP = 1e-3  # Train Step
+        self.NR_ITERATION = 200  # the number of iteration in the SoftMax
+        self.SHOW_ACC = 1  # Show Accuracy
+        self.TRAIN_STEP = 1e-2  # Train Step
 
     def training(self, features, labels):
         """
@@ -85,8 +84,7 @@ class NeuralNetwork(object):
         sess.run(tf.initialize_all_variables())
 
         for i in range(self.NR_ITERATION):
-            batch = util.generate_batch(train_features, train_labels, self.BATCH_SIZE)
-            train_step.run(feed_dict={x: batch[0], y_: batch[1]})
+            train_step.run(feed_dict={x: train_features, y_: train_labels})
 
             if i % self.SHOW_ACC == 0:
                 value = accuracy.eval(feed_dict={x: validation_features, y_: validation_labels})
