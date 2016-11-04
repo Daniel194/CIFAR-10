@@ -15,7 +15,6 @@ class NeuralNetwork(object):
         self.h1 = 100  # size of first hidden layer
         self.h2 = 100  # size of second hidden layer
         self.reg = 1e-3  # regularization strength
-        self.p = 0.5  # probability of keeping a unit active.
         self.delta = 1.0  # used in SVM Loss function.
         self.mu = 0.9  # parameter for parameter update ( SGD + Nesterov Momentum )
         self.learning_rate = 1e-1  # learning rate
