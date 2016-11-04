@@ -53,13 +53,9 @@ class NeuralNetwork(object):
         for i in range(self.number_of_iteration):
             # calculate first hidden layer activations
             hidden_layer1 = self.__forward(X, W1, b1)  # [50000 x 100]
-            # u1 = (np.random.rand(*hidden_layer1.shape) < self.p) / self.p  # first dropout mask.
-            # hidden_layer1 *= u1  # drop!
 
             # calculate second hidden layer activations
             hidden_layer2 = self.__forward(hidden_layer1, W2, b2)  # [50000 x 100]
-            # u2 = (np.random.rand(*hidden_layer2.shape) < self.p) / self.p  # second dropout mask.
-            # hidden_layer2 *= u2  # drop!
 
             # output neuron
             scores = np.dot(hidden_layer2, W3) + b3  # [50000 x 10]
@@ -87,7 +83,6 @@ class NeuralNetwork(object):
 
             # backward pass - second layer
             dW2 = np.dot(hidden_layer1.T, dhidden2)  # [100 x 100]
-            # dW2 += self.reg * W2
             db2 = np.sum(dhidden2, axis=0, keepdims=True)  # [1 x 100]
 
             # next backprop into first hidden layer
@@ -98,7 +93,6 @@ class NeuralNetwork(object):
 
             # backward pass - second layer
             dW1 = np.dot(X.T, dhidden1)  # [3072 x 100]
-            # dW1 += self.reg * W1
             db1 = np.sum(dhidden1, axis=0, keepdims=True)  # [1 x 100]
 
             # Perform parameter update ( SGD + Nesterov Momentum )
