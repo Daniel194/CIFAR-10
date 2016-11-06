@@ -14,10 +14,10 @@ class ConvolutionNeuralNetwork:
         self.D = d
         self.K = k
         self.NR_VALIDATION_DATA = 50
-        self.NR_ITERATION = 20
+        self.NR_ITERATION = 200
         self.BATCH_SIZE = 50
-        self.SHOW_ACC = 1
-        self.TRAIN_STEP = 1e-2
+        self.SHOW_ACC = 10
+        self.TRAIN_STEP = 1e-4
 
         # Shape
         self.W1_SHAPE = [5, 5, 3, 16]
