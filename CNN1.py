@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import Utility as util
+import math
 
 
 class ConvolutionNeuralNetwork:
@@ -229,12 +230,13 @@ class ConvolutionNeuralNetwork:
         :return: return a TensorFlow variable
         """
 
-        initial = tf.truncated_normal(shape, stddev=0.1)
+        if len(shape) == 4:
+            initial = np.random.randn(shape[0], shape[1], shape[2], shape[3]) * math.sqrt(
+                2.0 / (shape[0] * shape[1] * shape[2] * shape[3]))
+        else:
+            initial = np.random.randn(shape[0], shape[1]) * math.sqrt(2.0 / (shape[0] * shape[1]))
 
-        # initial = np.random.randn(shape[0], shape[1], shape[2], shape[3]) * math.sqrt(
-        #     2.0 / (shape[0] * shape[1] * shape[2] * shape[3]))
-
-        return tf.Variable(initial)
+        return tf.Variable(initial, dtype=tf.float32)
 
     def __bias_variable(self, shape):
         """
