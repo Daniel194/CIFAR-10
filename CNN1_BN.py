@@ -17,8 +17,9 @@ class ConvolutionNeuralNetwork:
         self.NR_VALIDATION_DATA = 50
         self.NR_ITERATION = 200
         self.BATCH_SIZE = 50
-        self.SHOW_ACC = 1
+        self.SHOW_ACC = 10
         self.TRAIN_STEP = 1e-4
+        self.EPSILON = 1e-3
 
         # Shape
         self.W1_SHAPE = [5, 5, 3, 16]
@@ -60,30 +61,47 @@ class ConvolutionNeuralNetwork:
         # Initialize the weights and the biases
         # First Layer
         W1 = self.__weight_variable(self.W1_SHAPE)  # [ 5 x 5 x 3 x 16 ]
-        b1 = self.__bias_variable(self.B1_SHAPE)  # [16]
+        scale1 = tf.Variable(tf.ones(self.B1_SHAPE))  # [16]
+        beta1 = tf.Variable(tf.zeros(self.B1_SHAPE))  # [16]
         # Second Layer
         W2 = self.__weight_variable(self.W2_SHAPE)  # [ 5 x 5 x 16 x 20 ]
-        b2 = self.__bias_variable(self.B2_SHAPE)  # [20]
+        scale2 = tf.Variable(tf.ones(self.B2_SHAPE))  # [20]
+        beta2 = tf.Variable(tf.zeros(self.B2_SHAPE))  # [20]
         # Third Layer
         W3 = self.__weight_variable(self.W3_SHAPE)  # [ 5 x 5 x 20 x 20 ]
-        b3 = self.__bias_variable(self.B3_SHAPE)  # [20]
+        scale3 = tf.Variable(tf.ones(self.B3_SHAPE))  # [20]
+        beta3 = tf.Variable(tf.zeros(self.B3_SHAPE))  # [20]
         # Full Connected Layer
         WFC = self.__weight_variable(self.WFC_SHAPE)  # [ 160 x 10 ]
         bFC = self.__bias_variable(self.BFC_SHAPE)  # [10]
 
         # Calculate the hidden layers
         # First Layer
-        H1_conv = self.__activation(self.__convolution(x_image, W1) + b1)  # [50000 x 32 x 32 x 16]
+        Z1_conv = self.__convolution(x_image, W1)
+        batch_mean1, batch_var1 = tf.nn.moments(Z1_conv, [0])
+
+        BN1 = tf.nn.batch_normalization(Z1_conv, batch_mean1, batch_var1, beta1, scale1, self.EPSILON)
+
+        H1_conv = self.__activation(BN1)  # [50000 x 32 x 32 x 16]
         H1_pool = self.__pool(H1_conv)  # [50000 x 16 x 16 x 16]
+
         # Second Layer
-        H2_conv = self.__activation(self.__convolution(H1_pool, W2) + b2)  # [50000 x 16 x 16 x 20]
+        Z2_conv = self.__convolution(H1_pool, W2)
+        batch_mean2, batch_var2 = tf.nn.moments(Z2_conv, [0])
+        BN2 = tf.nn.batch_normalization(Z2_conv, batch_mean2, batch_var2, beta2, scale2, self.EPSILON)
+        H2_conv = self.__activation(BN2)  # [50000 x 16 x 16 x 20]
         H2_pool = self.__pool(H2_conv)  # [50000 x 8 x 8 x 20]
+
         # Third Layer
-        H3_conv = self.__activation(self.__convolution(H2_pool, W3) + b3)  # [50000 x 8 x 8 x 20]
+        Z3_conv = self.__convolution(H2_pool, W3)
+        batch_mean3, batch_var3 = tf.nn.moments(Z3_conv, [0])
+        BN3 = tf.nn.batch_normalization(Z3_conv, batch_mean3, batch_var3, beta3, scale3, self.EPSILON)
+        H3_conv = self.__activation(BN3)  # [50000 x 8 x 8 x 20]
         H3_pool = self.__pool(H3_conv)  # [50000 x 4 x 4 x 20]
+
         # Full Connected Layer
         H3_pool_flatten = tf.reshape(H3_pool, [-1, self.WFC_SHAPE[0]])  # [ 50000 x 160 ]
-        HFC = self.__activation(tf.matmul(H3_pool_flatten, WFC) + bFC)  # [ 50000 x 10 ]
+        HFC = tf.matmul(H3_pool_flatten, WFC) + bFC  # [ 50000 x 10 ]
 
         # Calculate the output
         y_conv = tf.nn.softmax(HFC)  # [ 50000 x 10]
@@ -112,13 +130,16 @@ class ConvolutionNeuralNetwork:
                 print('Step - ', i, ' - Acc : ', train_accuracy)
 
         W1_final = W1.eval()
-        b1_final = b1.eval()
+        beta1_final = beta1.eval()
+        scale1_final = scale1.eval()
 
         W2_final = W2.eval()
-        b2_final = b2.eval()
+        beta2_final = beta2.eval()
+        scale2_final = scale2.eval()
 
         W3_final = W3.eval()
-        b3_final = b3.eval()
+        beta3_final = beta3.eval()
+        scale3_final = scale3.eval()
 
         WFC_final = WFC.eval()
         bFC_final = bFC.eval()
@@ -128,11 +149,14 @@ class ConvolutionNeuralNetwork:
 
         return {
             'W1': W1_final,
-            'b1': b1_final,
+            'beta1': beta1_final,
+            'scale1': scale1_final,
             'W2': W2_final,
-            'b2': b2_final,
+            'beta2': beta2_final,
+            'scale2': scale2_final,
             'W3': W3_final,
-            'b3': b3_final,
+            'beta3': beta3_final,
+            'scale3': scale3_final,
             'WFC': WFC_final,
             'bFC': bFC_final
         }
@@ -152,30 +176,46 @@ class ConvolutionNeuralNetwork:
         # Placeholders
         x = tf.placeholder(tf.float32, shape=[None, self.D])  # the data
         W1 = tf.placeholder(tf.float32, shape=self.W1_SHAPE)  # the weights
-        b1 = tf.placeholder(tf.float32, shape=self.B1_SHAPE)  # the biases
+        beta1 = tf.placeholder(tf.float32, shape=self.B1_SHAPE)  # the beta
+        scale1 = tf.placeholder(tf.float32, shape=self.B1_SHAPE)  # the scale
         W2 = tf.placeholder(tf.float32, shape=self.W2_SHAPE)  # the weights
-        b2 = tf.placeholder(tf.float32, shape=self.B2_SHAPE)  # the biases
+        beta2 = tf.placeholder(tf.float32, shape=self.B2_SHAPE)  # the beta
+        scale2 = tf.placeholder(tf.float32, shape=self.B2_SHAPE)  # the scale
         W3 = tf.placeholder(tf.float32, shape=self.W3_SHAPE)  # the weights
-        b3 = tf.placeholder(tf.float32, shape=self.B3_SHAPE)  # the biases
+        beta3 = tf.placeholder(tf.float32, shape=self.B3_SHAPE)  # the beta
+        scale3 = tf.placeholder(tf.float32, shape=self.B3_SHAPE)  # the scale
         WFC = tf.placeholder(tf.float32, shape=self.WFC_SHAPE)  # the weights
         bFC = tf.placeholder(tf.float32, shape=self.BFC_SHAPE)  # the biases
 
         # Reshape
         x_image = tf.reshape(x, [-1, 32, 32, 3])
 
-        # Calculate the hidden layers
         # First Layer
-        H1_conv = self.__activation(self.__convolution(x_image, W1) + b1)  # [50000 x 32 x 32 x 16]
+        Z1_conv = self.__convolution(x_image, W1)
+        batch_mean1, batch_var1 = tf.nn.moments(Z1_conv, [0])
+
+        BN1 = tf.nn.batch_normalization(Z1_conv, batch_mean1, batch_var1, beta1, scale1, self.EPSILON)
+
+        H1_conv = self.__activation(BN1)  # [50000 x 32 x 32 x 16]
         H1_pool = self.__pool(H1_conv)  # [50000 x 16 x 16 x 16]
+
         # Second Layer
-        H2_conv = self.__activation(self.__convolution(H1_pool, W2) + b2)  # [50000 x 16 x 16 x 20]
+        Z2_conv = self.__convolution(H1_pool, W2)
+        batch_mean2, batch_var2 = tf.nn.moments(Z2_conv, [0])
+        BN2 = tf.nn.batch_normalization(Z2_conv, batch_mean2, batch_var2, beta2, scale2, self.EPSILON)
+        H2_conv = self.__activation(BN2)  # [50000 x 16 x 16 x 20]
         H2_pool = self.__pool(H2_conv)  # [50000 x 8 x 8 x 20]
+
         # Third Layer
-        H3_conv = self.__activation(self.__convolution(H2_pool, W3) + b3)  # [50000 x 8 x 8 x 20]
+        Z3_conv = self.__convolution(H2_pool, W3)
+        batch_mean3, batch_var3 = tf.nn.moments(Z3_conv, [0])
+        BN3 = tf.nn.batch_normalization(Z3_conv, batch_mean3, batch_var3, beta3, scale3, self.EPSILON)
+        H3_conv = self.__activation(BN3)  # [50000 x 8 x 8 x 20]
         H3_pool = self.__pool(H3_conv)  # [50000 x 4 x 4 x 20]
+
         # Full Connected Layer
         H3_pool_flatten = tf.reshape(H3_pool, [-1, self.WFC_SHAPE[0]])  # [ 50000 x 160 ]
-        HFC = self.__activation(tf.matmul(H3_pool_flatten, WFC) + bFC)  # [ 50000 x 10 ]
+        HFC = tf.matmul(H3_pool_flatten, WFC) + bFC  # [ 50000 x 10 ]
 
         # Calculate the output
         y_conv = tf.nn.softmax(HFC)  # [ 50000 x 10]
@@ -187,11 +227,14 @@ class ConvolutionNeuralNetwork:
         feed_dict = {
             x: test_features,
             W1: nn['W1'],
-            b1: nn['b1'],
+            beta1: nn['beta1'],
+            scale1: nn['scale1'],
             W2: nn['W2'],
-            b2: nn['b2'],
+            beta2: nn['beta2'],
+            scale2: nn['scale2'],
             W3: nn['W3'],
-            b3: nn['b3'],
+            beta3: nn['beta3'],
+            scale3: nn['scale3'],
             WFC: nn['WFC'],
             bFC: nn['bFC']
         }
@@ -291,8 +334,8 @@ if __name__ == "__main__":
 
     # Load the CIFAR10 data
     X, y, X_test, y_test = util.load_CIFAR10('data/')
-    X_test = X_test[0:3 * batch_size]
-    y_test = y_test[0:3 * batch_size]
+    # X_test = X_test[0:3 * batch_size]
+    # y_test = y_test[0:3 * batch_size]
 
     # Train the Neural Network
     if util.file_exist(learn_data):
