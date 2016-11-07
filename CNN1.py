@@ -83,7 +83,7 @@ class ConvolutionNeuralNetwork:
         H3_pool = self.__pool(H3_conv)  # [50000 x 4 x 4 x 20]
         # Full Connected Layer
         H3_pool_flatten = tf.reshape(H3_pool, [-1, self.WFC_SHAPE[0]])  # [ 50000 x 160 ]
-        HFC = self.__activation(tf.matmul(H3_pool_flatten, WFC) + bFC)  # [ 50000 x 10 ]
+        HFC = tf.matmul(H3_pool_flatten, WFC) + bFC  # [ 50000 x 10 ]
 
         # Calculate the output
         y_conv = tf.nn.softmax(HFC)  # [ 50000 x 10]
@@ -175,7 +175,7 @@ class ConvolutionNeuralNetwork:
         H3_pool = self.__pool(H3_conv)  # [50000 x 4 x 4 x 20]
         # Full Connected Layer
         H3_pool_flatten = tf.reshape(H3_pool, [-1, self.WFC_SHAPE[0]])  # [ 50000 x 160 ]
-        HFC = self.__activation(tf.matmul(H3_pool_flatten, WFC) + bFC)  # [ 50000 x 10 ]
+        HFC = tf.matmul(H3_pool_flatten, WFC) + bFC  # [ 50000 x 10 ]
 
         # Calculate the output
         y_conv = tf.nn.softmax(HFC)  # [ 50000 x 10]
