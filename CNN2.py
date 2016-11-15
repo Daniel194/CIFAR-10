@@ -15,9 +15,9 @@ class ConvolutionNeuralNetwork(object):
         self.D = d
         self.K = k
         self.NR_VALIDATION_DATA = 50
-        self.NR_ITERATION = 50
-        self.BATCH_SIZE = 50
-        self.SHOW_ACC = 10
+        self.NR_ITERATION = 20000
+        self.BATCH_SIZE = 500
+        self.SHOW_ACC = 100
         self.TRAIN_STEP = 1e-4
         self.EPSILON = 1e-3
 
@@ -456,15 +456,15 @@ if __name__ == "__main__":
     K = 10  # number of classes
     learn_data = 'result/CNN2/cifar_10'
     final_accuracy = 0
-    batch_size = 50
+    batch_size = 500
 
     # Neural Network
     cnn = ConvolutionNeuralNetwork(3072, 10)
 
     # Load the CIFAR10 data
     X, y, X_test, y_test = util.load_CIFAR10('data/')
-    X_test = X_test[0:3 * batch_size]
-    y_test = y_test[0:3 * batch_size]
+    # X_test = X_test[0:3 * batch_size]
+    # y_test = y_test[0:3 * batch_size]
 
     # Train the Neural Network
     if util.file_exist(learn_data):
