@@ -15,11 +15,14 @@ class ConvolutionNeuralNetwork(object):
         self.D = d
         self.K = k
         self.NR_VALIDATION_DATA = 50
-        self.NR_ITERATION = 20000
-        self.BATCH_SIZE = 500
-        self.SHOW_ACC = 100
+        self.NR_ITERATION = 200
+        self.BATCH_SIZE = 50
+        self.SHOW_ACC = 1
+
+        # Hyperparameter
         self.TRAIN_STEP = 1e-4
         self.EPSILON = 1e-3
+        self.BETA = 1e-3
 
         # Shape
         self.W1_1_SHAPE = [3, 3, 3, 32]
@@ -145,22 +148,27 @@ class ConvolutionNeuralNetwork(object):
         Z_FC1 = tf.matmul(H_pool3_flat, WFC1)
         batch_mean_fc1, batch_var_fc1 = tf.nn.moments(Z_FC1, [0])
         BN_FC1 = tf.nn.batch_normalization(Z_FC1, batch_mean_fc1, batch_var_fc1, betaFC1, scaleFC1, self.EPSILON)
-        H_fc1 = self.__activation(BN_FC1)  # [ 50000 x 1024 ]
+        H_fc1 = self.__activation(BN_FC1)  # [ 50000 x 2048 ]
+
+        # Dropout
+        keep_prob = tf.placeholder(tf.float32)
+        H_fc1_drop = tf.nn.dropout(H_fc1, keep_prob)
 
         # Second Full Connected Layer
-        H_fc2 = tf.matmul(H_fc1, WFC2) + bFC2  # [ 50000 x 10]
-
-        # Calculate the output
-        y = tf.nn.softmax(H_fc2)  # [ 50000 x 10]
+        H_fc2 = tf.matmul(H_fc1_drop, WFC2) + bFC2  # [ 50000 x 10]
 
         # Apply cross entropy loss ( loss data )
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(y, y_)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(H_fc2, y_) + self.BETA * tf.nn.l2_loss(
+            W1_1) + self.BETA * tf.nn.l2_loss(W1_2) + self.BETA * tf.nn.l2_loss(W2_1) + self.BETA * tf.nn.l2_loss(
+            W2_2) + self.BETA * tf.nn.l2_loss(W3_1) + self.BETA * tf.nn.l2_loss(W3_2) + self.BETA * tf.nn.l2_loss(
+            WFC1) + self.BETA * tf.nn.l2_loss(WFC2)
         cross_entropy_mean = tf.reduce_mean(cross_entropy)
 
         # Training step - ADAM solver
         train_step = tf.train.AdamOptimizer(self.TRAIN_STEP).minimize(cross_entropy_mean)
 
         # Evaluate the model
+        y = tf.nn.softmax(H_fc2)  # [ 50000 x 10]
         correct_prediction = tf.equal(tf.argmax(y, 1), y_)
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -169,10 +177,10 @@ class ConvolutionNeuralNetwork(object):
 
         for i in range(self.NR_ITERATION):
             batch = util.generate_batch(train_features, train_labels, self.BATCH_SIZE)
-            train_step.run(feed_dict={x: batch[0], y_: batch[1]})
+            train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
             if i % self.SHOW_ACC == 0:
-                train_accuracy = accuracy.eval(feed_dict={x: validation_features, y_: validation_labels})
+                train_accuracy = accuracy.eval(feed_dict={x: validation_features, y_: validation_labels, keep_prob: 1})
 
                 print('Step - ', i, ' - Acc : ', train_accuracy)
 
@@ -456,15 +464,15 @@ if __name__ == "__main__":
     K = 10  # number of classes
     learn_data = 'result/CNN2_DO/cifar_10'
     final_accuracy = 0
-    batch_size = 500
+    batch_size = 50
 
     # Neural Network
     cnn = ConvolutionNeuralNetwork(3072, 10)
 
     # Load the CIFAR10 data
     X, y, X_test, y_test = util.load_CIFAR10('data/')
-    # X_test = X_test[0:3 * batch_size]
-    # y_test = y_test[0:3 * batch_size]
+    X_test = X_test[0:3 * batch_size]
+    y_test = y_test[0:3 * batch_size]
 
     # Train the Neural Network
     if util.file_exist(learn_data):
