@@ -92,6 +92,21 @@ def append_data_to_file(filename, predicted_labels, start):
         writer.writerows(label for label in predicted_labels)
 
 
+def write_to_file(filename, predicted_labels):
+    """
+    Write the labels in a csv file.
+    :param filename: the filename where will be append the labels.
+    :param predicted_labels: the prediction labels.
+    """
+
+    predicted_labels = [np.arange(1, 1 + len(predicted_labels)), predicted_labels]
+    predicted_labels = np.transpose(predicted_labels)
+
+    with open(filename, 'a') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(label for label in predicted_labels)
+
+
 def load_CIFAR10(file):
     """
     :param file: the file where are saved the CIFAR10 data
