@@ -1,5 +1,5 @@
 """
-ACCURACY : ?????
+ACCURACY : 68.5%
 """
 
 import tensorflow as tf
@@ -462,6 +462,7 @@ if __name__ == '__main__':
     Utility.write_to_file(SAVE_DATA, predictions)
 
     # Calculate the accuracy
+    test_labels = np.array(test_labels)
     acc = np.mean(predictions == test_labels)
 
     print('===================================')
