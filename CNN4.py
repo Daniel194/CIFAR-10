@@ -10,6 +10,7 @@ import tensorflow as tf
 import time
 import math
 import os
+import sys
 import re
 
 
@@ -637,14 +638,46 @@ if __name__ == "__main__":
     tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
     tf.app.flags.DEFINE_string('data_dir', 'data', """Path to the CIFAR-10 data directory.""")
     tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
-    tf.app.flags.DEFINE_string('train_dir', 'train_result', """Directory where to write event logs and checkpoint.""")
-    tf.app.flags.DEFINE_integer('max_steps', 1000000, """Number of batches to run.""")
+    tf.app.flags.DEFINE_string('train_dir', 'result/CNN4/train_result',
+                               """Directory where to write event logs and checkpoint.""")
+    tf.app.flags.DEFINE_integer('max_steps', 100000, """Number of batches to run.""")
     tf.app.flags.DEFINE_boolean('log_device_placement', False, """Whether to log device placement.""")
-    tf.app.flags.DEFINE_string('eval_dir', 'eval_result', """Directory where to write event logs.""")
+    tf.app.flags.DEFINE_string('eval_dir', 'result/CNN4/eval_result', """Directory where to write event logs.""")
     tf.app.flags.DEFINE_string('eval_data', 'test', """Either 'test' or 'train_eval'.""")
-    tf.app.flags.DEFINE_string('checkpoint_dir', 'train_result', """Directory where to read model checkpoints.""")
+    tf.app.flags.DEFINE_string('checkpoint_dir', 'result/CNN4/train_result',
+                               """Directory where to read model checkpoints.""")
     tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5, """How often to run the eval.""")
     tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.""")
     tf.app.flags.DEFINE_boolean('run_once', False, """Whether to run eval only once.""")
 
     tf.app.run()
+
+    model = ImageRecognition()
+
+    if len(sys.argv) != 2:
+        print('The program must be run as : python3.5 CNN4.py [train|eval]')
+        sys.exit(2)
+    else:
+        if sys.argv[1] == 'train':
+            print('Run Train .....')
+
+            if tf.gfile.Exists(FLAGS.train_dir):
+                tf.gfile.DeleteRecursively(FLAGS.train_dir)
+
+            tf.gfile.MakeDirs(FLAGS.train_dir)
+
+            model.train()
+
+        elif sys.argv[1] == 'eval':
+            print('Run Eval .....')
+
+            if tf.gfile.Exists(FLAGS.eval_dir):
+                tf.gfile.DeleteRecursively(FLAGS.eval_dir)
+
+            tf.gfile.MakeDirs(FLAGS.eval_dir)
+
+            model.evaluate()
+
+        else:
+            print('The available options for this script are : train and eval')
+            sys.exit(2)
