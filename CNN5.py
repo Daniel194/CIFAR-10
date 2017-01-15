@@ -1,7 +1,7 @@
 """
 AUTHOR : Lungu Daniel
 
-ACCURACY : ?????
+ACCURACY : 88.3 %
 """
 
 from datetime import datetime
@@ -516,7 +516,7 @@ class ImageRecognition(object):
             self.__activation_summary(conv3)
 
         # Fourth Convolutional Layer
-        with tf.name_scope('conv4') as scope:
+        with tf.variable_scope('conv4') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
             weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
@@ -538,12 +538,12 @@ class ImageRecognition(object):
             dropout1 = tf.nn.dropout(pool2, 0.8)
 
         # Fifth Convolutional Layer
-        with tf.name_scope('conv5') as scope:
+        with tf.variable_scope('conv5') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 512])
             weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 512],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [512], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [512], tf.constant_initializer(0.0))
 
             z = tf.nn.conv2d(dropout1, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
@@ -556,7 +556,7 @@ class ImageRecognition(object):
             dropout2 = tf.nn.dropout(conv5, 0.8)
 
         # Sixth Convolutional Layer
-        with tf.name_scope('conv6') as scope:
+        with tf.variable_scope('conv6') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 512, 512])
             weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 512, 512],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
@@ -578,11 +578,11 @@ class ImageRecognition(object):
             dropout3 = tf.nn.dropout(pool3, 0.5)
 
         # First Fully Connected Layer
-        with tf.name_scope('fc1') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [8192, 2048])
-            dropout3_flat = tf.reshape(dropout3, [-1, 8192])
+        with tf.variable_scope('fc1') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [4608, 2048])
+            dropout3_flat = tf.reshape(dropout3, [-1, 4608])
 
-            weights = self.__variable_with_weight_decay('weights', shape=[8192, 2048],
+            weights = self.__variable_with_weight_decay('weights', shape=[4608, 2048],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             scale = self.__variable_on_cpu('scale', [2048], tf.constant_initializer(1.0))
             beta = self.__variable_on_cpu('beta', [2048], tf.constant_initializer(0.0))
@@ -594,7 +594,7 @@ class ImageRecognition(object):
             self.__activation_summary(fc1)
 
         # SoftMax Linear
-        with tf.name_scope('softmax_linear') as scope:
+        with tf.variable_scope('softmax_linear') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [2048, self.NUM_CLASSES])
 
             weights = self.__variable_with_weight_decay('weights', shape=[2048, self.NUM_CLASSES],
@@ -696,27 +696,7 @@ class ImageRecognition(object):
         return train_op
 
 
-if __name__ == "__main__":
-    FLAGS = tf.app.flags.FLAGS
-
-    # Basic model parameters.
-    tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
-    tf.app.flags.DEFINE_string('data_dir', 'data', """Path to the CIFAR-10 data directory.""")
-    tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
-    tf.app.flags.DEFINE_string('train_dir', 'result/CNN5/train_result',
-                               """Directory where to write event logs and checkpoint.""")
-    tf.app.flags.DEFINE_integer('max_steps', 100000, """Number of batches to run.""")
-    tf.app.flags.DEFINE_boolean('log_device_placement', False, """Whether to log device placement.""")
-    tf.app.flags.DEFINE_string('eval_dir', 'result/CNN5/eval_result', """Directory where to write event logs.""")
-    tf.app.flags.DEFINE_string('eval_data', 'test', """Either 'test' or 'train_eval'.""")
-    tf.app.flags.DEFINE_string('checkpoint_dir', 'result/CNN5/train_result',
-                               """Directory where to read model checkpoints.""")
-    tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5, """How often to run the eval.""")
-    tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.""")
-    tf.app.flags.DEFINE_boolean('run_once', False, """Whether to run eval only once.""")
-
-    tf.app.run()
-
+def main(argv=None):  # pylint: disable=unused-argument
     model = ImageRecognition()
 
     if len(sys.argv) != 2:
@@ -746,3 +726,25 @@ if __name__ == "__main__":
         else:
             print('The available options for this script are : train and eval')
             sys.exit(2)
+
+
+if __name__ == "__main__":
+    FLAGS = tf.app.flags.FLAGS
+
+    # Basic model parameters.
+    tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
+    tf.app.flags.DEFINE_string('data_dir', 'data', """Path to the CIFAR-10 data directory.""")
+    tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
+    tf.app.flags.DEFINE_string('train_dir', 'result/CNN5/train_result',
+                               """Directory where to write event logs and checkpoint.""")
+    tf.app.flags.DEFINE_integer('max_steps', 100000, """Number of batches to run.""")
+    tf.app.flags.DEFINE_boolean('log_device_placement', False, """Whether to log device placement.""")
+    tf.app.flags.DEFINE_string('eval_dir', 'result/CNN5/eval_result', """Directory where to write event logs.""")
+    tf.app.flags.DEFINE_string('eval_data', 'test', """Either 'test' or 'train_eval'.""")
+    tf.app.flags.DEFINE_string('checkpoint_dir', 'result/CNN5/train_result',
+                               """Directory where to read model checkpoints.""")
+    tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5, """How often to run the eval.""")
+    tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.""")
+    tf.app.flags.DEFINE_boolean('run_once', False, """Whether to run eval only once.""")
+
+    tf.app.run()
