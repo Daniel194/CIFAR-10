@@ -1,7 +1,7 @@
 """
 AUTHOR : Lungu Daniel
 
-ACCURACY : ?????
+ACCURACY : 86.1%
 """
 
 from datetime import datetime

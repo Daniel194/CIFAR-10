@@ -7,6 +7,7 @@ ACCURACY : ?????
 from datetime import datetime
 import numpy as np
 import tensorflow as tf
+import functools
 import time
 import math
 import os
@@ -31,6 +32,7 @@ class ImageRecognition(object):
         self.NUM_EPOCHS_PER_DECAY = 350.0  # Epochs after which learning rate decays.
         self.LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
         self.INITIAL_LEARNING_RATE = 0.1  # Initial learning rate.
+        self.EPSILON = 1e-3  # Hyperparamter for Batch Normalization.
 
         # If a model is trained with multiple GPUs, prefix all Op names with tower_name
         # to differentiate the operations. Note that this prefix is removed from the
@@ -416,7 +418,7 @@ class ImageRecognition(object):
         var = self.__variable_on_cpu(name, shape, tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
 
         if wd is not None:
-            weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+            weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
             tf.add_to_collection('losses', weight_decay)
 
         return var
@@ -467,20 +469,39 @@ class ImageRecognition(object):
         :return: Logits.
         """
 
-        # conv1
+        # First Convolutional Layer
         with tf.variable_scope('conv1') as scope:
-            kernel = self.__variable_with_weight_decay('weights', shape=[5, 5, 3, 64], stddev=5e-2, wd=0.0)
-            conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
-            biases = self.__variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
-            pre_activation = tf.nn.bias_add(conv, biases)
-            conv1 = tf.nn.relu(pre_activation, name=scope.name)
+            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 3, 64])
+            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 3, 64],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [64], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [64], tf.constant_initializer(0.0))
+
+            z = tf.nn.conv2d(images, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv1 = tf.nn.relu(bn, name=scope.name)
             self.__activation_summary(conv1)
 
-        # pool1
-        pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
+        # Second Convolutional Layer
+        with tf.variable_scope('conv2') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 64, 128])
+            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 64, 128],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [128], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [128], tf.constant_initializer(0.0))
 
-        # norm1
-        norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
+            z = tf.nn.conv2d(conv1, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv2 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv2)
+
+        # First Pool Layer
+        with tf.name_scope('pool1'):
+            pool1 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
+
+
 
         # conv2
         with tf.variable_scope('conv2') as scope:
@@ -536,7 +557,8 @@ class ImageRecognition(object):
 
         # Calculate the average cross entropy loss across the batch.
         labels = tf.cast(labels, tf.int64)
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name='cross_entropy_per_example')
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=logits,
+                                                                       name='cross_entropy_per_example')
         cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
         tf.add_to_collection('losses', cross_entropy_mean)
 
