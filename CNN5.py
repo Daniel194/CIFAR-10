@@ -671,7 +671,7 @@ class ImageRecognition(object):
 
         # Compute gradients.
         with tf.control_dependencies([loss_averages_op]):
-            opt = tf.train.GradientDescentOptimizer(lr)
+            opt = tf.train.AdamOptimizer(lr)
             grads = opt.compute_gradients(total_loss)
 
         # Apply gradients.
@@ -694,22 +694,6 @@ class ImageRecognition(object):
             train_op = tf.no_op(name='train')
 
         return train_op
-
-
-def main(argv=None):  # pylint: disable=unused-argument
-    if tf.gfile.Exists(FLAGS.train_dir):
-        tf.gfile.DeleteRecursively(FLAGS.train_dir)
-
-    tf.gfile.MakeDirs(FLAGS.train_dir)
-
-    if tf.gfile.Exists(FLAGS.eval_dir):
-        tf.gfile.DeleteRecursively(FLAGS.eval_dir)
-
-    tf.gfile.MakeDirs(FLAGS.eval_dir)
-
-    model = ImageRecognition()
-    model.train()
-    model.evaluate()
 
 
 if __name__ == "__main__":
