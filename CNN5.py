@@ -501,47 +501,106 @@ class ImageRecognition(object):
         with tf.name_scope('pool1'):
             pool1 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
 
+        # Third Convolutional Layer
+        with tf.variable_scope('conv3') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 128, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 128, 256],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
 
+            z = tf.nn.conv2d(pool1, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv3 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv3)
 
-        # conv2
-        with tf.variable_scope('conv2') as scope:
-            kernel = self.__variable_with_weight_decay('weights', shape=[5, 5, 64, 64], stddev=5e-2, wd=0.0)
-            conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
-            biases = self.__variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
-            pre_activation = tf.nn.bias_add(conv, biases)
-            conv2 = tf.nn.relu(pre_activation, name=scope.name)
-            self.__activation_summary(conv2)
+        # Fourth Convolutional Layer
+        with tf.name_scope('conv4') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
 
-        # norm2
-        norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
+            z = tf.nn.conv2d(conv3, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv4 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv4)
 
-        # pool2
-        pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+        # Second Pool Layer
+        with tf.name_scope('pool2'):
+            pool2 = tf.nn.max_pool(conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-        # local3
-        with tf.variable_scope('local3') as scope:
-            # Move everything into depth so we can perform a single matrix multiply.
-            reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
-            dim = reshape.get_shape()[1].value
-            weights = self.__variable_with_weight_decay('weights', shape=[dim, 384], stddev=0.04, wd=0.004)
-            biases = self.__variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
-            local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
-            self.__activation_summary(local3)
+        # First Dropout
+        with tf.name_scope('dropout1'):
+            dropout1 = tf.nn.dropout(pool2, 0.8)
 
-        # local4
-        with tf.variable_scope('local4') as scope:
-            weights = self.__variable_with_weight_decay('weights', shape=[384, 192], stddev=0.04, wd=0.004)
-            biases = self.__variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
-            local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
-            self.__activation_summary(local4)
+        # Fifth Convolutional Layer
+        with tf.name_scope('conv5') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 512])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 512],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
 
-        # linear layer(WX + b),
-        # We don't apply softmax here because tf.nn.sparse_softmax_cross_entropy_with_logits accepts the unscaled logits
-        # and performs the softmax internally for efficiency.
-        with tf.variable_scope('softmax_linear') as scope:
-            weights = self.__variable_with_weight_decay('weights', [192, self.NUM_CLASSES], stddev=1 / 192.0, wd=0.0)
+            z = tf.nn.conv2d(dropout1, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv5 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv5)
+
+        # Second Dropout
+        with tf.name_scope('dropout2'):
+            dropout2 = tf.nn.dropout(conv5, 0.8)
+
+        # Sixth Convolutional Layer
+        with tf.name_scope('conv6') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 512, 512])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 512, 512],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [512], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [512], tf.constant_initializer(0.0))
+
+            z = tf.nn.conv2d(dropout2, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv6 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv6)
+
+        # Third Pool Layer
+        with tf.name_scope('pool3'):
+            pool3 = tf.nn.max_pool(conv6, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+        # Third Dropout
+        with tf.name_scope('dropout3'):
+            dropout3 = tf.nn.dropout(pool3, 0.5)
+
+        # First Fully Connected Layer
+        with tf.name_scope('fc1') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [8192, 2048])
+            dropout3_flat = tf.reshape(dropout3, [-1, 8192])
+
+            weights = self.__variable_with_weight_decay('weights', shape=[8192, 2048],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [2048], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [2048], tf.constant_initializer(0.0))
+
+            z = tf.matmul(dropout3_flat, weights)
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            fc1 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(fc1)
+
+        # SoftMax Linear
+        with tf.name_scope('softmax_linear') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [2048, self.NUM_CLASSES])
+
+            weights = self.__variable_with_weight_decay('weights', shape=[2048, self.NUM_CLASSES],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             biases = self.__variable_on_cpu('biases', [self.NUM_CLASSES], tf.constant_initializer(0.0))
-            softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
+            softmax_linear = tf.add(tf.matmul(fc1, weights), biases, name=scope.name)
             self.__activation_summary(softmax_linear)
 
         return softmax_linear
