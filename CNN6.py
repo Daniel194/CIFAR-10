@@ -471,8 +471,8 @@ class ImageRecognition(object):
 
         # First Convolutional Layer
         with tf.variable_scope('conv1') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 3, 64])
-            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 3, 64],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 3, 64])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 3, 64],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             scale = self.__variable_on_cpu('scale', [64], tf.constant_initializer(1.0))
             beta = self.__variable_on_cpu('beta', [64], tf.constant_initializer(0.0))
@@ -485,11 +485,11 @@ class ImageRecognition(object):
 
         # Second Convolutional Layer
         with tf.variable_scope('conv2') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 64, 128])
-            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 64, 128],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 64, 64])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 64, 64],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [128], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [128], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [64], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [64], tf.constant_initializer(0.0))
 
             z = tf.nn.conv2d(conv1, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
@@ -501,15 +501,19 @@ class ImageRecognition(object):
         with tf.name_scope('pool1'):
             pool1 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
 
+        # First Dropout
+        with tf.name_scope('dropout1'):
+            dropout1 = tf.nn.dropout(pool1, 0.75)
+
         # Third Convolutional Layer
         with tf.variable_scope('conv3') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [5, 5, 128, 256])
-            weights = self.__variable_with_weight_decay('weights', shape=[5, 5, 128, 256],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 64, 128])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 64, 128],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [128], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [128], tf.constant_initializer(0.0))
 
-            z = tf.nn.conv2d(pool1, weights, strides=[1, 1, 1, 1], padding='SAME')
+            z = tf.nn.conv2d(dropout1, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
             bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
             conv3 = tf.nn.relu(bn, name=scope.name)
@@ -517,11 +521,11 @@ class ImageRecognition(object):
 
         # Fourth Convolutional Layer
         with tf.variable_scope('conv4') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
-            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 128, 128])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 64, 128],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [128], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [128], tf.constant_initializer(0.0))
 
             z = tf.nn.conv2d(conv3, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
@@ -533,65 +537,112 @@ class ImageRecognition(object):
         with tf.name_scope('pool2'):
             pool2 = tf.nn.max_pool(conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-        # First Dropout
-        with tf.name_scope('dropout1'):
-            dropout1 = tf.nn.dropout(pool2, 0.8)
+        # Second Dropout
+        with tf.name_scope('dropout2'):
+            dropout2 = tf.nn.dropout(pool2, 0.75)
 
         # Fifth Convolutional Layer
         with tf.variable_scope('conv5') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 512])
-            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 512],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 128, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 128, 256],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [512], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [512], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
 
-            z = tf.nn.conv2d(dropout1, weights, strides=[1, 1, 1, 1], padding='SAME')
+            z = tf.nn.conv2d(dropout2, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
             bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
             conv5 = tf.nn.relu(bn, name=scope.name)
             self.__activation_summary(conv5)
 
-        # Second Dropout
-        with tf.name_scope('dropout2'):
-            dropout2 = tf.nn.dropout(conv5, 0.8)
-
         # Sixth Convolutional Layer
         with tf.variable_scope('conv6') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 512, 512])
-            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 512, 512],
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [512], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [512], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
 
-            z = tf.nn.conv2d(dropout2, weights, strides=[1, 1, 1, 1], padding='SAME')
+            z = tf.nn.conv2d(conv5, weights, strides=[1, 1, 1, 1], padding='SAME')
             batch_mean, batch_var = tf.nn.moments(z, [0])
             bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
             conv6 = tf.nn.relu(bn, name=scope.name)
             self.__activation_summary(conv6)
 
+        # Seventh Convolutional Layer
+        with tf.variable_scope('conv7') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
+
+            z = tf.nn.conv2d(conv6, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv7 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv7)
+
+        # Eighth Convolutional Layer
+        with tf.variable_scope('conv8') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 256, 256])
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 256, 256],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [256], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [256], tf.constant_initializer(0.0))
+
+            z = tf.nn.conv2d(conv7, weights, strides=[1, 1, 1, 1], padding='SAME')
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            conv8 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(conv8)
+
         # Third Pool Layer
         with tf.name_scope('pool3'):
-            pool3 = tf.nn.max_pool(conv6, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            pool3 = tf.nn.max_pool(conv8, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
         # Third Dropout
         with tf.name_scope('dropout3'):
-            dropout3 = tf.nn.dropout(pool3, 0.5)
+            dropout3 = tf.nn.dropout(pool3, 0.75)
 
         # First Fully Connected Layer
         with tf.variable_scope('fc1') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [4608, 2048])
-            dropout3_flat = tf.reshape(dropout3, [-1, 4608])
+            nr_units = functools.reduce(lambda x, y: x * y, [2304, 1024])
+            dropout3_flat = tf.reshape(dropout3, [-1, 2304])
 
-            weights = self.__variable_with_weight_decay('weights', shape=[4608, 2048],
+            weights = self.__variable_with_weight_decay('weights', shape=[2304, 1024],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
-            scale = self.__variable_on_cpu('scale', [2048], tf.constant_initializer(1.0))
-            beta = self.__variable_on_cpu('beta', [2048], tf.constant_initializer(0.0))
+            scale = self.__variable_on_cpu('scale', [1024], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [1024], tf.constant_initializer(0.0))
 
             z = tf.matmul(dropout3_flat, weights)
             batch_mean, batch_var = tf.nn.moments(z, [0])
             bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
             fc1 = tf.nn.relu(bn, name=scope.name)
             self.__activation_summary(fc1)
+
+        # Fourth Dropout
+        with tf.name_scope('dropout4'):
+            dropout4 = tf.nn.dropout(fc1, 0.5)
+
+        # Second Fully Connected Layer
+        with tf.variable_scope('fc2') as scope:
+            nr_units = functools.reduce(lambda x, y: x * y, [1024, 1024])
+
+            weights = self.__variable_with_weight_decay('weights', shape=[2304, 1024],
+                                                        stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
+            scale = self.__variable_on_cpu('scale', [1024], tf.constant_initializer(1.0))
+            beta = self.__variable_on_cpu('beta', [1024], tf.constant_initializer(0.0))
+
+            z = tf.matmul(dropout4, weights)
+            batch_mean, batch_var = tf.nn.moments(z, [0])
+            bn = tf.nn.batch_normalization(z, batch_mean, batch_var, beta, scale, self.EPSILON)
+            fc2 = tf.nn.relu(bn, name=scope.name)
+            self.__activation_summary(fc2)
+
+        # Fifth Dropout
+        with tf.name_scope('dropout5'):
+            dropout4 = tf.nn.dropout(fc2, 0.5)
 
         # SoftMax Linear
         with tf.variable_scope('softmax_linear') as scope:
@@ -600,7 +651,7 @@ class ImageRecognition(object):
             weights = self.__variable_with_weight_decay('weights', shape=[2048, self.NUM_CLASSES],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             biases = self.__variable_on_cpu('biases', [self.NUM_CLASSES], tf.constant_initializer(0.0))
-            softmax_linear = tf.add(tf.matmul(fc1, weights), biases, name=scope.name)
+            softmax_linear = tf.add(tf.matmul(dropout4, weights), biases, name=scope.name)
             self.__activation_summary(softmax_linear)
 
         return softmax_linear
