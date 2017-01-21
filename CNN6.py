@@ -1,7 +1,7 @@
 """
 AUTHOR : Lungu Daniel
 
-ACCURACY : 88.3 %
+ACCURACY : ??.??%
 """
 
 from datetime import datetime
@@ -522,7 +522,7 @@ class ImageRecognition(object):
         # Fourth Convolutional Layer
         with tf.variable_scope('conv4') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [3, 3, 128, 128])
-            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 64, 128],
+            weights = self.__variable_with_weight_decay('weights', shape=[3, 3, 128, 128],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             scale = self.__variable_on_cpu('scale', [128], tf.constant_initializer(1.0))
             beta = self.__variable_on_cpu('beta', [128], tf.constant_initializer(0.0))
@@ -629,7 +629,7 @@ class ImageRecognition(object):
         with tf.variable_scope('fc2') as scope:
             nr_units = functools.reduce(lambda x, y: x * y, [1024, 1024])
 
-            weights = self.__variable_with_weight_decay('weights', shape=[2304, 1024],
+            weights = self.__variable_with_weight_decay('weights', shape=[1024, 1024],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             scale = self.__variable_on_cpu('scale', [1024], tf.constant_initializer(1.0))
             beta = self.__variable_on_cpu('beta', [1024], tf.constant_initializer(0.0))
@@ -646,9 +646,9 @@ class ImageRecognition(object):
 
         # SoftMax Linear
         with tf.variable_scope('softmax_linear') as scope:
-            nr_units = functools.reduce(lambda x, y: x * y, [2048, self.NUM_CLASSES])
+            nr_units = functools.reduce(lambda x, y: x * y, [1024, self.NUM_CLASSES])
 
-            weights = self.__variable_with_weight_decay('weights', shape=[2048, self.NUM_CLASSES],
+            weights = self.__variable_with_weight_decay('weights', shape=[1024, self.NUM_CLASSES],
                                                         stddev=1.0 / math.sqrt(float(nr_units)), wd=0.0)
             biases = self.__variable_on_cpu('biases', [self.NUM_CLASSES], tf.constant_initializer(0.0))
             softmax_linear = tf.add(tf.matmul(dropout4, weights), biases, name=scope.name)
