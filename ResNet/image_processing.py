@@ -1,11 +1,15 @@
 import cv2
-import _pickle as cPickle
+import pickle
 import numpy as np
 
 
 def unpickle(filename):
-    with open(filename, 'rb') as fp:
-        return cPickle.load(fp)
+    with open(filename, 'rb') as f:
+        u = pickle._Unpickler(f)
+        u.encoding = 'latin1'
+        dict = u.load()
+
+        return dict
 
 
 def shuffle(images, labels):

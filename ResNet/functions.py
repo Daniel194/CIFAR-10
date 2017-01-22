@@ -10,7 +10,7 @@ def weight_variable(shape, wd=1e-4):
     k, c = 3, shape[-2]
     var = tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2.0 / (k * k * c))))
     if wd is not None:
-        weight_decay = tf.mul(tf.nn.l2_loss(var), wd)
+        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd)
         tf.add_to_collection('losses', weight_decay)
 
     print(var.get_shape())

@@ -2,6 +2,7 @@ import os
 import time
 import argparse
 import pandas as pd
+import network
 from network import *
 import datasets
 

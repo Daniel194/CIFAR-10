@@ -22,9 +22,9 @@ def distort(image, is_train=True):
 
 def load_cifar10(is_train=True):
     if is_train:
-        filenames = [ROOT + "/data/data_batch_%d" % j for j in range(1, 6)]
+        filenames = [ROOT + "/ResNet/data/data_batch_%d" % j for j in range(1, 6)]
     else:
-        filenames = [ROOT + "/data/test_batch"]
+        filenames = [ROOT + "/ResNet/data/test_batch"]
     images, labels = [], []
     for filename in filenames:
         cifar10 = image_processing.unpickle(filename)

@@ -19,8 +19,8 @@ class BaseCifar10Classifier(object):
         self._avg_loss = self._loss(self._labels, self._logits)
         self._train_op = self._train(self._avg_loss)
         self._accuracy = F.accuracy_score(self._labels, self._logits)
-        self._saver = tf.train.Saver(tf.all_variables())
-        self._session.run(tf.initialize_all_variables())
+        self._saver = tf.train.Saver(tf.global_variables())
+        self._session.run(tf.global_variables_initializer())
 
     def fit(self, X, y, max_epoch=10):
         for epoch in range(max_epoch):
@@ -64,7 +64,7 @@ class BaseCifar10Classifier(object):
         pass
 
     def _loss(self, labels, logits):
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels)
         cross_entropy_mean = tf.reduce_mean(cross_entropy)
         tf.add_to_collection('losses', cross_entropy_mean)
         return tf.add_n(tf.get_collection('losses'))
@@ -161,7 +161,7 @@ class Cifar10Classifier_ResNet(BaseCifar10Classifier):
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return F.activation(h)
 
@@ -179,8 +179,8 @@ class Cifar10Classifier_ResNet(BaseCifar10Classifier):
         return h
 
     def _train(self, avg_loss):
-        lr = tf.select(tf.less(self._global_step, 32000), 0.1,
-                       tf.select(tf.less(self._global_step, 48000), 0.01, 0.001))
+        lr = tf.where(tf.less(self._global_step, 32000), 0.1,
+                      tf.where(tf.less(self._global_step, 48000), 0.01, 0.001))
         return tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(avg_loss,
                                                                                    global_step=self._global_step)
 
@@ -207,7 +207,7 @@ class Cifar10Classifier_ResNet32_BNAfterAddition(Cifar10Classifier_ResNet32):
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return F.activation(F.batch_normalization(h))
 
@@ -224,7 +224,7 @@ class Cifar10Classifier_ResNet32_ReLUBeforeAddition(Cifar10Classifier_ResNet32):
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return h
 
@@ -241,7 +241,7 @@ class Cifar10Classifier_ResNet32_ReLUOnlyPreActivation(Cifar10Classifier_ResNet3
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return h
 
@@ -258,7 +258,7 @@ class Cifar10Classifier_ResNet32_FullPreActivation(Cifar10Classifier_ResNet32):
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return h
 
@@ -275,7 +275,7 @@ class Cifar10Classifier_ResNet32_NoActivation(Cifar10Classifier_ResNet32):
             h = h2 + h0
         else:
             h3 = F.avg_pool(h0)
-            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [channels / 4, channels / 4]])
+            h4 = tf.pad(h3, [[0, 0], [0, 0], [0, 0], [int(channels / 4), int(channels / 4)]])
             h = h2 + h4
         return h
 
@@ -285,8 +285,8 @@ class Cifar10Classifier_ResNet32_Momentum(Cifar10Classifier_ResNet32):  # Origin
         super(Cifar10Classifier_ResNet32_Momentum, self).__init__()
 
     def _train(self, avg_loss):
-        lr = tf.select(tf.less(self._global_step, 32000), 0.1,
-                       tf.select(tf.less(self._global_step, 48000), 0.01, 0.001))
+        lr = tf.where(tf.less(self._global_step, 32000), 0.1,
+                      tf.where(tf.less(self._global_step, 48000), 0.01, 0.001))
         return tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(avg_loss,
                                                                                    global_step=self._global_step)
 
