@@ -32,9 +32,9 @@ def run(clf):
             "test-acc: %(test_accuracy).3f, test-loss: %(test_loss).3f, %(examples_per_sec).1f examples/sec" % summary)
         records.append(summary)
         df = pd.DataFrame(records)
-        df.to_csv("../output/%s.csv" % clf.__class__.__name__.lower(), index=False)
+        df.to_csv("result/%s.csv" % clf.__class__.__name__.lower(), index=False)
         if df["test_accuracy"].max() - 1e-5 < test_accuracy:
-            save_dir = "../models/%s" % clf.__class__.__name__
+            save_dir = "result/%s" % clf.__class__.__name__
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             print("Save to %s" % save_dir)

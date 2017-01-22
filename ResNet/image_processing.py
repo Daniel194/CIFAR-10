@@ -1,5 +1,5 @@
 import cv2
-import cPickle
+import _pickle as cPickle
 import numpy as np
 
 
