@@ -65,6 +65,10 @@ class ImageRecognition(object):
             class _LoggerHook(tf.train.SessionRunHook):
                 """Logs loss and runtime."""
 
+                def __init__(self):
+                    self._step = None
+                    self._start_time = None
+
                 def begin(self):
                     self._step = -1
 
@@ -130,7 +134,8 @@ class ImageRecognition(object):
 
                 time.sleep(FLAGS.eval_interval_secs)
 
-    def __eval_once(self, saver, summary_writer, top_k_op, summary_op):
+    @staticmethod
+    def __eval_once(saver, summary_writer, top_k_op, summary_op):
         """
         Run Eval once.
         :param saver:  Saver.
@@ -142,6 +147,7 @@ class ImageRecognition(object):
 
         with tf.Session() as sess:
             ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+            threads = []
 
             if ckpt and ckpt.model_checkpoint_path:
                 # Restores from checkpoint
@@ -158,7 +164,6 @@ class ImageRecognition(object):
             coord = tf.train.Coordinator()
 
             try:
-                threads = []
                 for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
                     threads.extend(qr.create_threads(sess, coord=coord, daemon=True, start=True))
 
@@ -200,15 +205,18 @@ class ImageRecognition(object):
         """
 
         class CIFAR10Record(object):
-            pass
+            def __init__(self):
+                self.height = 32
+                self.width = 32
+                self.depth = 3
+                self.key = None
+                self.label = None
+                self.uint8image = None
 
         result = CIFAR10Record()
 
         # Dimensions of the images in the CIFAR-10 dataset.
         label_bytes = 1
-        result.height = 32
-        result.width = 32
-        result.depth = 3
         image_bytes = result.height * result.width * result.depth
 
         # Every record consists of a label followed by the image, with a fixed number of bytes for each.
@@ -235,7 +243,8 @@ class ImageRecognition(object):
 
         return result
 
-    def __generate_image_and_label_batch(self, image, label, min_queue_examples, batch_size, shuffle):
+    @staticmethod
+    def __generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle):
         """
         Construct a queued batch of images and labels.
         :param image: 3-D Tensor of [height, width, 3] of type.float32.
@@ -386,21 +395,6 @@ class ImageRecognition(object):
         tf.contrib.deprecated.histogram_summary(tensor_name + '/activations', x)
         tf.contrib.deprecated.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
-    def __variable_on_cpu(self, name, shape, initializer):
-        """
-        Helper to create a Variable stored on CPU memory.
-        :param name: name of the variable
-        :param shape: list of ints
-        :param initializer: initializer for Variable
-        :return: Variable Tensor
-        """
-
-        with tf.device('/cpu:0'):
-            dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
-            var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
-
-        return var
-
     def _distorted_inputs(self):
         """
         Construct distorted input for CIFAR training using the Reader ops.
@@ -506,12 +500,13 @@ class ImageRecognition(object):
         :return: return the convolutional output
         """
 
-        W = self.__weight_variable([3, 3, self.__channels(x), n])
-        res = self.__conv2d(x, W, strides)
+        w = self.__weight_variable([3, 3, self.__channels(x), n])
+        res = self.__conv2d(x, w, strides)
 
         return res
 
-    def __weight_variable(self, shape, wd=1e-4):
+    @staticmethod
+    def __weight_variable(shape, wd=1e-4):
         """
         Create weight variables
         :param shape: the shape
@@ -519,11 +514,8 @@ class ImageRecognition(object):
         :return: return the weights
         """
 
-        dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
-
         k, c = 3, shape[-2]
-        var = self.__variable_on_cpu('weights', shape,
-                                     tf.truncated_normal_initializer(stddev=np.sqrt(2.0 / (k * k * c)), dtype=dtype))
+        var = tf.Variable(tf.truncated_normal_initializer(shape, stddev=np.sqrt(2.0 / (k * k * c))))
 
         if wd is not None:
             weight_decay = tf.multiply(tf.nn.l2_loss(var), wd)
@@ -575,16 +567,16 @@ class ImageRecognition(object):
         return tf.nn.avg_pool(x, ksize=[1, ksize, ksize, 1], strides=[1, strides, strides, 1], padding='SAME')
 
     @staticmethod
-    def __conv2d(x, W, strides=1):
+    def __conv2d(x, w, strides=1):
         """
         Convolutionla operation.
         :param x: the data
-        :param W:  the weighs
+        :param w:  the weighs
         :param strides:  strides
         :return: return the output of the convolutional layer
         """
 
-        return tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+        return tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding='SAME')
 
     def __dense(self, x, n):
         """
@@ -594,22 +586,23 @@ class ImageRecognition(object):
         :return: return logits
         """
 
-        W, b = self.__weight_variable([self.__volume(x), n]), self.__bias_variable([n])
+        w, b = self.__weight_variable([self.__volume(x), n]), self.__bias_variable([n])
 
-        return tf.add(tf.matmul(x, W), b)
+        return tf.add(tf.matmul(x, w), b)
 
-    def __bias_variable(self, shape):
+    @staticmethod
+    def __bias_variable(shape):
         """
         Initialize the bias variable.
         :param shape: the shape of the variable.
         :return: return biases
         """
-
-        b = self.__variable_on_cpu('biases', shape, tf.constant_initializer(0.0))
+        b = tf.Variable(tf.constant(0.0, shape=shape))
 
         return b
 
-    def __loss(self, logits, labels):
+    @staticmethod
+    def __loss(logits, labels):
         """
         Add L2Loss to all the trainable variables.
         Add summary for "Loss" and "Loss/avg".
@@ -628,7 +621,8 @@ class ImageRecognition(object):
         # The total loss is defined as the cross entropy loss plus all of the weight decay terms (L2 loss).
         return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
-    def __add_loss_summaries(self, total_loss):
+    @staticmethod
+    def __add_loss_summaries(total_loss):
         """
         Add summaries for losses in CIFAR-10 model.
         Generates moving average for all losses and associated summaries for visualizing the performance of the network.
@@ -700,7 +694,7 @@ class ImageRecognition(object):
         return train_op
 
 
-def main(argv=None):  # pylint: disable=unused-argument
+def main():  # pylint: disable=unused-argument
     model = ImageRecognition()
 
     if len(sys.argv) != 2:
