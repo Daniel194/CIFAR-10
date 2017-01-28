@@ -1,7 +1,7 @@
 """
 AUTHOR : Lungu Daniel
 
-ACCURACY : ??.? %
+ACCURACY : 91.7 %
 """
 
 import cv2
