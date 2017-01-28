@@ -7,7 +7,6 @@ ACCURACY : ??.? %
 from datetime import datetime
 import numpy as np
 import tensorflow as tf
-import functools
 import time
 import math
 import os
@@ -402,28 +401,6 @@ class ImageRecognition(object):
 
         return var
 
-    def __variable_with_weight_decay(self, name, shape, stddev, wd):
-        """
-        Helper to create an initialized Variable with weight decay.
-        Note that the Variable is initialized with a truncated normal distribution.
-        A weight decay is added only if one is specified.
-        :param name: name of the variable
-        :param shape: list of ints
-        :param stddev: standard deviation of a truncated Gaussian
-        :param wd: add L2Loss weight decay multiplied by this float. If None, weight
-                   decay is not added for this Variable.
-        :return: Variable Tensor
-        """
-
-        dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
-        var = self.__variable_on_cpu(name, shape, tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
-
-        if wd is not None:
-            weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
-            tf.add_to_collection('losses', weight_decay)
-
-        return var
-
     def _distorted_inputs(self):
         """
         Construct distorted input for CIFAR training using the Reader ops.
@@ -488,9 +465,21 @@ class ImageRecognition(object):
 
     @staticmethod
     def __activation(x):
+        """
+        Activation function (ReLU)
+        :param x: the data
+        :return: return activation result
+        """
+
         return tf.nn.relu(x)
 
     def __batch_normalization(self, x):
+        """
+        Batch Normalization.
+        :param x: the data
+        :return: the batch normalization
+        """
+
         eps = 1e-5
         gamma = tf.Variable(tf.constant(1.0, shape=[self.__channels(x)]))
         beta = tf.Variable(tf.constant(0.0, shape=[self.__channels(x)]))
@@ -500,28 +489,57 @@ class ImageRecognition(object):
 
     @staticmethod
     def __channels(x):
+        """
+        Channels
+        :param x: the data
+        :return: return the number of channels
+        """
+
         return int(x.get_shape()[-1])
 
     def __conv(self, x, n, strides=1):
+        """
+        Convolutional layer.
+        :param x: the data
+        :param n: number of channels
+        :param strides: strides
+        :return: return the convolutional output
+        """
+
         W = self.__weight_variable([3, 3, self.__channels(x), n])
         res = self.__conv2d(x, W, strides)
 
         return res
 
-    @staticmethod
-    def __weight_variable(shape, wd=1e-4):
+    def __weight_variable(self, shape, wd=1e-4):
+        """
+        Create weight variables
+        :param shape: the shape
+        :param wd: weight decay
+        :return: return the weights
+        """
+
+        dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+
         k, c = 3, shape[-2]
-        var = tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2.0 / (k * k * c))))
+        var = self.__variable_on_cpu('weights', shape,
+                                     tf.truncated_normal_initializer(stddev=np.sqrt(2.0 / (k * k * c)), dtype=dtype))
 
         if wd is not None:
             weight_decay = tf.multiply(tf.nn.l2_loss(var), wd)
             tf.add_to_collection('losses', weight_decay)
 
-        print(var.get_shape())
-
         return var
 
     def __residual(self, h, channels, strides):
+        """
+        Residual layer
+        :param h: the previous hidden layer
+        :param channels: number of channels
+        :param strides: strides
+        :return: return the next hidden layer
+        """
+
         h0 = h
         h1 = self.__activation(self.__batch_normalization(self.__conv(h0, channels, strides)))
         h2 = self.__batch_normalization(self.__conv(h1, channels))
@@ -537,24 +555,57 @@ class ImageRecognition(object):
 
     @staticmethod
     def __volume(x):
+        """
+        Calculate the volume of data.
+        :param x: the data
+        :return: return volume of data.
+        """
+
         return np.prod([d for d in x.get_shape()[1:].as_list()])
 
     @staticmethod
     def __avg_pool(x, ksize=2, strides=2):
+        """
+        Average pool layer.
+        :param x: the data
+        :param ksize: the kernel size
+        :param strides: strides
+        :return: return the output of the average pool layer
+        """
         return tf.nn.avg_pool(x, ksize=[1, ksize, ksize, 1], strides=[1, strides, strides, 1], padding='SAME')
 
     @staticmethod
     def __conv2d(x, W, strides=1):
+        """
+        Convolutionla operation.
+        :param x: the data
+        :param W:  the weighs
+        :param strides:  strides
+        :return: return the output of the convolutional layer
+        """
+
         return tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
 
     def __dense(self, x, n):
+        """
+        Final layer
+        :param x: the data
+        :param n: number of class
+        :return: return logits
+        """
+
         W, b = self.__weight_variable([self.__volume(x), n]), self.__bias_variable([n])
 
-        return tf.matmul(x, W) + b
+        return tf.add(tf.matmul(x, W), b)
 
-    @staticmethod
-    def __bias_variable(shape):
-        b = tf.Variable(tf.constant(0.0, shape=shape))
+    def __bias_variable(self, shape):
+        """
+        Initialize the bias variable.
+        :param shape: the shape of the variable.
+        :return: return biases
+        """
+
+        b = self.__variable_on_cpu('biases', shape, tf.constant_initializer(0.0))
 
         return b
 
