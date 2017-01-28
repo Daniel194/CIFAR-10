@@ -515,7 +515,7 @@ class ImageRecognition(object):
         """
 
         k, c = 3, shape[-2]
-        var = tf.Variable(tf.truncated_normal_initializer(shape, stddev=np.sqrt(2.0 / (k * k * c))))
+        var = tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2.0 / (k * k * c))))
 
         if wd is not None:
             weight_decay = tf.multiply(tf.nn.l2_loss(var), wd)
@@ -694,14 +694,14 @@ class ImageRecognition(object):
         return train_op
 
 
-def main():  # pylint: disable=unused-argument
+def main(argv):
     model = ImageRecognition()
 
-    if len(sys.argv) != 2:
+    if len(argv) != 2:
         print('The program must be run as : python3.5 ResNet2.py [train|eval]')
         sys.exit(2)
     else:
-        if sys.argv[1] == 'train':
+        if argv[1] == 'train':
             print('Run Train .....')
 
             if tf.gfile.Exists(FLAGS.train_dir):
@@ -711,7 +711,7 @@ def main():  # pylint: disable=unused-argument
 
             model.train()
 
-        elif sys.argv[1] == 'eval':
+        elif argv[1] == 'eval':
             print('Run Eval .....')
 
             if tf.gfile.Exists(FLAGS.eval_dir):
